@@ -84,6 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.value = '';
         previewArea.classList.add('hidden');
         dropZone.classList.remove('hidden');
+        btnAnalyze.classList.remove('hidden');
+        btnCancel.classList.remove('hidden');
     });
 
     // Start New Test
@@ -267,9 +269,10 @@ document.addEventListener('DOMContentLoaded', () => {
             stopNeuralAnimation();
 
             if (data.success) {
-                // Store results for blockchain submission
+                // Store results for blockchain submission and AI Copilot
                 lastAnalysisScore = data.results.risk_score || 0;
                 lastBiomarkers = data.results.biomarkers || data.results;
+                window.uronexaData = { score: lastAnalysisScore, biomarkers: lastBiomarkers };
 
                 renderResults(data.results);
 
@@ -505,14 +508,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const verdict = res.result || res.class || 'Unknown';
             const val = res.value || res.estimate || '--';
 
-            // Calculate Polar Coordinates (r = 150px)
+            // Calculate Polar Coordinates (r = 130px to fit better)
             // -Math.PI/2 starts at the top (12 O'clock)
             const angle = (index / numBadges) * (2 * Math.PI) - (Math.PI / 2);
-            const radius = 160;
+            const radius = 160;  // Restore original radius so center is clear
 
-            // We use calc() to keep it perfectly centered relative to 50% 50%
-            const leftCalc = `calc(50% + ${Math.cos(angle) * radius}px)`;
-            const topCalc = `calc(50% + ${Math.sin(angle) * radius}px)`;
+            // Restore original 10% bounds so it doesn't overlap center 20
+            const leftCalc = `clamp(10%, calc(50% + ${Math.cos(angle) * radius}px), 90%)`;
+            const topCalc = `clamp(10%, calc(50% + ${Math.sin(angle) * radius}px), 90%)`;
 
             let borderColor = 'rgba(255, 255, 255, 0.1)';
             let organPulseClass = 'pulse-warning';

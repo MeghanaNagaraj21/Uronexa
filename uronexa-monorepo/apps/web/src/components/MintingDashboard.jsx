@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import ClinicalCopilot from './ClinicalCopilot';
 
 const MintingDashboard = ({ onSecure, isMinting }) => {
     // Helper to check biomass levels
@@ -207,6 +208,18 @@ const MintingDashboard = ({ onSecure, isMinting }) => {
                             <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{data.status}</div>
                         </div>
                     ))}
+                </div>
+
+                {/* New Clinical AI Copilot Section */}
+                <div style={{ width: '100%', marginTop: '2rem', marginBottom: '2rem' }}>
+                    <h3 className="glow-cyan" style={{ marginBottom: '1rem', fontSize: '0.9rem', letterSpacing: '2px', textAlign: 'left' }}>
+                        ASK CLINICAL AI
+                    </h3>
+
+                    <ClinicalCopilot
+                        riskScore={mockResult.riskScore}
+                        biomarkers={mockResult.biomarkers}
+                    />
                 </div>
 
                 <div style={{ width: '100%' }}>

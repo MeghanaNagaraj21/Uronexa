@@ -166,210 +166,217 @@ def calculate_clinical_risk(extracted_results, strip_detection_percent):
 
 
 
+def validate_is_strip(img_bgr):
+    """
+    Lightweight gate to reject clearly non-strip images.
+    Uses 2 loose checks. Real strips pass easily.
+    Returns (True, "") if valid, or (False, reason_string) if rejected.
+    """
+    h, w = img_bgr.shape[:2]
+
+    # 1. ASPECT RATIO: Strip must be taller than it is wide after auto-rotation.
+    #    We allow up to a 1.5:1 width:height ratio to handle slightly wide photos.
+    if w > h * 1.5:
+        return False, "Image appears to be landscape. Please photograph the strip in portrait (vertical) orientation."
+
+    # 2. SATURATION CHECK: A test strip ALWAYS has some color in its pads
+    #    (cream, yellow, tan, green, purple depending on reagents).
+    #    A QR code, printed document, or B&W photo is nearly pure black and white = near-zero saturation.
+    #    We reject if the mean HSV saturation is unrealistically low (< 10 out of 255).
+    hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+    mean_saturation = np.mean(hsv[:, :, 1])
+    if mean_saturation < 10:
+        return False, "No test strip detected. The image appears to be a black & white document, not a urine test strip."
+
+    return True, ""
+
+
 def extract_colors(image_path):
     img = cv2.imread(image_path)
     if img is None:
         raise Exception("Could not read uploaded image. Please ensure it is a valid format.")
-        
+
     debug_img = img.copy()
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     height, width, _ = img.shape
-    
+
+    # Auto-rotate to portrait
     if width > height:
         img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
         debug_img = cv2.rotate(debug_img, cv2.ROTATE_90_CLOCKWISE)
         height, width, _ = img.shape
 
-    # --- ADVANCED 1D MATCHED FILTER (THE MATHEMATICALLY PERFECT FIX) ---
-    # Acts like a barcode scanner. We slide an ideal 10-gap template down the center line.
-    # It financially rewards placing pads on color/dark spots, and heavily penalizes
-    # placing the gaps anywhere except the bright white plastic of the stick. This mathematically
-    # prevents the grid from "compressing" or "shifting", forcing perfect 10-pad alignment.
-    
+    # Validate before analysis
+    valid, reason = validate_is_strip(debug_img)
+    if not valid:
+        raise Exception(f"Not a valid test strip: {reason}")
+
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
     gray = cv2.cvtColor(debug_img, cv2.COLOR_BGR2GRAY)
-    hsv = cv2.cvtColor(debug_img, cv2.COLOR_BGR2HSV)
-    
-    # Restrict to middle 50% to ignore side backgrounds
+    hsv  = cv2.cvtColor(debug_img, cv2.COLOR_BGR2HSV)
+
+    # --- FIND STRIP CENTER X ---
+    # Use the CENTER 50% only — avoids picking up the dark strip edge
     roi_start = int(width * 0.25)
-    roi_end = int(width * 0.75)
-    
-    # 1. Find the physical center of the stick by looking for the column with the most "Padness" (darkness/color)
-    # The white plastic handle is bright. The pads are darker or colored.
+    roi_end   = int(width * 0.75)
+
     inverted_gray = 255 - gray
-    
-    # Add a bit of saturation to make colors pop out even more against the white stick
-    s_channel = hsv[:, :, 1]
-    padness_map = inverted_gray.astype(np.float32) + s_channel.astype(np.float32)
-    
-    col_sums = np.sum(padness_map[:, roi_start:roi_end], axis=0)
-    
-    # Smooth to find the widest chunk of color/darkness
-    kernel_size = int(width * 0.05)
+    s_channel   = hsv[:, :, 1]
+
+    # Use SATURATION ONLY to find the strip center X.
+    # Saturation peaks at actual pad COLOR centers (cream, yellow, tan, purple etc.)
+    # inverted_gray + saturation was peaking at dark EDGE SHADOWS on the strip boundary,
+    # causing the center line to land on the edge instead of the pads.
+    col_sums      = np.sum(s_channel[:, roi_start:roi_end].astype(np.float32), axis=0)
+    kernel_size   = max(3, int(width * 0.05))
     smoothed_cols = np.convolve(col_sums, np.ones(kernel_size), mode='same')
-    
-    # Find the peak, but instead of raw argmax (which can stick to an edge), 
-    # find the center of the plateau above 95% of max
+
     max_val = np.max(smoothed_cols)
-    plateau_indices = np.where(smoothed_cols > max_val * 0.95)[0]
-    
+    plateau_indices = np.where(smoothed_cols > max_val * 0.85)[0]
+
     if len(plateau_indices) > 0:
         best_col_offset = int(np.mean(plateau_indices))
     else:
         best_col_offset = np.argmax(smoothed_cols)
-        
+
     stick_center_x = roi_start + best_col_offset
-    
-    # Draw yellow line down the exact center
     cv2.line(debug_img, (stick_center_x, 0), (stick_center_x, height), (0, 255, 255), 1)
-    
-    # 2. Extract 1D Signal "Padness" down the exact center line 
-    # Padness = Saturation (Color) + (255 - Value) (Darkness)
-    # The white stick background has S=0, V=255 -> Padness = 0.
-    # Pads are either Colored (High S) or Dark (Low V), making Padness spike wildly upwards!
-    
-    s_col = hsv[:, stick_center_x-2:stick_center_x+3, 1].astype(np.float32)
-    v_col = hsv[:, stick_center_x-2:stick_center_x+3, 2].astype(np.float32)
-    
-    s_signal = np.mean(s_col, axis=1)
-    v_signal = np.mean(v_col, axis=1)
-    
+
+    # --- 1D PAD SIGNAL --- use combined padness (saturation + inverted brightness)
+    # for the vertical signal only (where we WANT dark spots to score high)
+    padness_map = inverted_gray.astype(np.float32) + s_channel.astype(np.float32)
+
+    # --- 1D PAD SIGNAL ---
+    sx = max(0, stick_center_x - 3)
+    ex = min(width, stick_center_x + 4)
+
+    s_col = hsv[:, sx:ex, 1].astype(np.float32)
+    v_col = hsv[:, sx:ex, 2].astype(np.float32)
+
+    s_signal   = np.mean(s_col, axis=1)
+    v_signal   = np.mean(v_col, axis=1)
     pad_signal = s_signal + (255.0 - v_signal)
-    
-    # Smooth signal to eliminate tiny specs or hair
-    kernel_size = max(3, int(height * 0.005))
-    if kernel_size % 2 == 0: kernel_size += 1
-    pad_signal = np.convolve(pad_signal, np.ones(kernel_size)/kernel_size, mode='same')
-    
-    # 3. Slide the 10-Tooth Comb (Matched Filter) to find the perfect grid
-    max_score = -999999
-    best_step = 0
+
+    smooth_k = max(3, int(height * 0.005))
+    if smooth_k % 2 == 0: smooth_k += 1
+    pad_signal = np.convolve(pad_signal, np.ones(smooth_k) / smooth_k, mode='same')
+
+    # --- 10-TOOTH COMB MATCHED FILTER ---
+    # KEY FIX: Limit start_y to the TOP 40% of the image.
+    # Strips always begin near the top. Without this limit the filter drifts
+    # downward because cream/white pads (Leukocytes, Nitrite) score like gaps.
+    max_allowed_start = int(height * 0.40)
+
+    max_score  = -999999
+    best_step  = 0
     best_start = 0
-    
-    # Normal urine strips: 10 pads + handle take up ~80% of image height. 
-    # So 1 pad + 1 gap (step size) is roughly 6% to 10% of image height.
-    min_step = int(height * 0.05)
-    max_step = int(height * 0.12)
-    
+
+    min_step = int(height * 0.04)
+    max_step = int(height * 0.13)
+
     for step in range(min_step, max_step):
-        half_step = int(step / 2.0)
-        
-        # Test every possible starting Y coordinate for Pad 0
-        for start_y in range(half_step, height - (9 * step) - half_step):
+        half_step = max(1, int(step * 0.5))
+
+        for start_y in range(half_step, min(max_allowed_start, height - (9 * step) - half_step)):
             score = 0
-            
-            # Top white margin (should be the blank white stick tip, so low signal)
-            score -= pad_signal[start_y - half_step] * 2.0
-            
+
+            # Small upward bias: prefer grids that start earlier (higher up)
+            # This stops the comb from skipping the first cream/white pad
+            score += (max_allowed_start - start_y) * 0.15
+
+            top_y = max(0, start_y - half_step)
+            score -= pad_signal[top_y] * 2.0
+
             for i in range(10):
                 pad_y = start_y + i * step
-                
-                # Reward finding a pad (high signal)
-                # Colored/Dark pads contribute heavily. White pads (Leuko/Nitrite) contribute 0, 
-                # but the global barcode alignment forces them into place.
-                score += pad_signal[pad_y] * 2.5 
-                
-                # Penalize massively if the physical gap between pads is not bright white plastic!
+                if pad_y >= height:
+                    break
+                score += pad_signal[pad_y] * 2.5
+
                 if i < 9:
                     gap_y = pad_y + half_step
-                    score -= pad_signal[gap_y] * 3.0
-                    
-            # Bottom white margin (should be stick/handle, so low color/darkness relative to pads)
-            score -= pad_signal[start_y + 9 * step + half_step] * 2.0
-            
+                    if gap_y < height:
+                        score -= pad_signal[gap_y] * 3.0
+
+            bot_y = min(height - 1, start_y + 9 * step + half_step)
+            score -= pad_signal[bot_y] * 2.0
+
             if score > max_score:
-                max_score = score
-                best_step = step
+                max_score  = score
+                best_step  = step
                 best_start = start_y
-                
-    cv2.putText(debug_img, "MATCHED FILTER MODE", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-    
-    extracted_results = {}
+
+    cv2.putText(debug_img, "MATCHED FILTER MODE", (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+    # --- EXTRACT PAD COLORS with white balance ---
     keys = [
-        "Leukocytes", "Nitrite", "Urobilinogen", "Protein", "pH", 
+        "Leukocytes", "Nitrite", "Urobilinogen", "Protein", "pH",
         "Blood", "Specific Gravity", "Ketones", "Bilirubin", "Glucose"
     ]
-    
-    # Pad physical size is roughly equal to the step spacing them out
     box_size = int(best_step * 0.75)
-    
-    # --- STRICT 1:1 COLOR REPLICATION: CALIBRATE WHITE BALANCE ---
-    # According to the directive, we must not use global auto-contrast. Instead, we manually
-    # isolate the bright white plastic stick located one step ABOVE the first pad (Leukocytes) 
-    # to find the specific ambient color temperature.
-    
-    white_y = best_start - best_step
+
+    white_y = max(5, best_start - best_step)
     white_x = stick_center_x
-    
-    # Ensure bounds are safe
-    white_y = max(5, white_y)
-    
-    # True center 5x5 pixel median of the white plastic
-    white_region = img[white_y-2:white_y+3, white_x-2:white_x+3]
-    white_ref = np.median(white_region, axis=(0,1))
-    
-    # Prevent divide by zero if picture is stark black (fail safe)
+    white_region = img_rgb[white_y - 2:white_y + 3, white_x - 2:white_x + 3]
+    white_ref    = np.median(white_region, axis=(0, 1))
     if np.any(white_ref <= 0):
-        white_ref = np.array([255, 255, 255])
-        
+        white_ref = np.array([255.0, 255.0, 255.0])
     white_multiplier = 255.0 / white_ref
-    
-    # Draw blue 5x5 debug box for the White Balance anchor
-    cv2.rectangle(debug_img, (white_x-2, white_y-2), (white_x+3, white_y+3), (255, 0, 0), -1)
+
+    cv2.rectangle(debug_img,
+                  (white_x - 2, white_y - 2),
+                  (white_x + 3, white_y + 3),
+                  (255, 0, 0), -1)
+
+    extracted_results = {}
 
     for i in range(10):
         cy = best_start + i * best_step
         cx = stick_center_x
-        
+
         box_w = box_size
         box_h = int(box_size * 0.8)
-        
-        box_x = int(cx - box_w/2.0)
-        box_y = int(cy - box_h/2.0)
-        
-        # --- STRICT 1:1 COLOR REPLICATION: CENTER SAMPLING & WHITE BALANCE ---
-        # The user requested skipping massive box averaging to avoid side-shadow contamination. 
-        # So we only take a 5x5 box strictly in the dead center.
-        y_start = max(0, cy - 2)
-        y_end = min(height, cy + 3)
-        x_start = max(0, cx - 2)
-        x_end = min(width, cx + 3)
-        
-        if y_end <= y_start or x_end <= x_start:
-            avg_color = np.array([0, 0, 0])
+        box_x = int(cx - box_w / 2.0)
+        box_y = int(cy - box_h / 2.0)
+
+        y0 = max(0, cy - 3)
+        y1 = min(height, cy + 4)
+        x0 = max(0, cx - 3)
+        x1 = min(width, cx + 4)
+
+        if y1 <= y0 or x1 <= x0:
+            avg_color = np.array([0.0, 0.0, 0.0])
         else:
-            region = img[y_start:y_end, x_start:x_end]
+            region = img_rgb[y0:y1, x0:x1]
             avg_color = np.median(region, axis=(0, 1))
-            
-        if avg_color is None or not hasattr(avg_color, '__len__') or np.isnan(np.sum(avg_color)):
-             avg_color = np.array([0, 0, 0])
-             
-        # Apply the exact white-balance offset against ambient lighting conditions
-        calibrated_color = avg_color * white_multiplier
-        calibrated_color = np.clip(calibrated_color, 0, 255)
-             
+
+        if avg_color is None or np.isnan(np.sum(avg_color)):
+            avg_color = np.array([0.0, 0.0, 0.0])
+
+        calibrated_color = np.clip(avg_color * white_multiplier, 0, 255)
         r, g, b = int(calibrated_color[0]), int(calibrated_color[1]), int(calibrated_color[2])
-        
-        # Visual feedback
-        cv2.rectangle(debug_img, (box_x, box_y), (box_x+box_w, box_y+box_h), (255, 0, 0), 2) # Outer bound found/interpolated
-        cv2.rectangle(debug_img, (x_start, y_start), (x_end, y_end), (0, 255, 0), -1) # Inner 5x5 read core
-        
+
+        cv2.rectangle(debug_img, (box_x, box_y), (box_x + box_w, box_y + box_h), (255, 0, 0), 2)
+        cv2.rectangle(debug_img, (x0, y0), (x1, y1), (0, 255, 0), -1)
+
         param_name = keys[i]
         status, value = closest_status((r, g, b), param_name)
-        
+
         extracted_results[param_name] = {
             "result": status,
-            "value": value,
-            "color": f"rgb({r}, {g}, {b})"
+            "value":  value,
+            "color":  f"rgb({r}, {g}, {b})"
         }
-    
-    # Save debug output
+
+    # Save debug image
     debug_filename = "debug_" + os.path.basename(image_path)
-    debug_path = os.path.join(app.config['UPLOAD_FOLDER'], debug_filename)
+    debug_path     = os.path.join(app.config['UPLOAD_FOLDER'], debug_filename)
     cv2.imwrite(debug_path, debug_img)
-        
+
     clinical_data = calculate_clinical_risk(extracted_results, 98.5)
-        
     return clinical_data, debug_path
+
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):

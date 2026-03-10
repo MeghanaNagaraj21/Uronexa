@@ -77,8 +77,8 @@ Before anything else, install the following on your machine:
 ### Step 1 — Clone the Repository
 
 ```bash
-git clone https://github.com/Saket207/UronexaC2.git
-cd UronexaC2
+git clone https://github.com/Saket207/UronexaFinal.git
+cd UronexaFinal
 ```
 
 ---

@@ -10,6 +10,238 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.0/ethers.umd.min.js"></script>
+    <style>
+        .copilot-container {
+            position: fixed;
+            bottom: 90px;
+            right: 24px;
+            z-index: 1000;
+            width: 380px;
+            height: 500px;
+            max-width: calc(100vw - 48px);
+            max-height: calc(100vh - 120px);
+            background-color: #050B14;
+            background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            margin: 0;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform-origin: bottom right;
+        }
+
+        .copilot-container.copilot-hidden {
+            transform: scale(0);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .copilot-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1001;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #00F0FF;
+            color: #050B14;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.5);
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .copilot-fab:hover {
+            transform: scale(1.1);
+            background-color: #00c8ff;
+        }
+
+        .copilot-fab.fab-open {
+            background-color: #ef4444;
+            color: #fff;
+            transform: rotate(90deg);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .copilot-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .copilot-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .copilot-chat-history {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding-right: 0.5rem;
+        }
+
+        .copilot-chat-history::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .copilot-chat-history::-webkit-scrollbar-thumb {
+            background: rgba(0, 240, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .copilot-user-msg {
+            align-self: flex-end;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px 16px 0 16px;
+            padding: 0.8rem 1.2rem;
+            color: #fff;
+            max-width: 80%;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .copilot-ai-msg {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 240, 255, 0.5);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+            border-radius: 16px 16px 16px 0;
+            padding: 1rem 1.2rem;
+            color: #e2e8f0;
+            max-width: 85%;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .copilot-ai-msg p {
+            margin-bottom: 0.8rem;
+        }
+
+        .copilot-ai-msg p:last-child {
+            margin-bottom: 0;
+        }
+
+        .copilot-ai-msg strong {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .copilot-ai-msg ul {
+            margin-left: 1.5rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .copilot-ai-msg li {
+            margin-bottom: 0.2rem;
+        }
+
+        .copilot-input-area {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 1rem;
+        }
+
+        .copilot-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 12px;
+            padding: 0.8rem 1.2rem;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .copilot-input:focus {
+            outline: none;
+            border-color: rgba(0, 240, 255, 0.5);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        .copilot-input::placeholder {
+            color: #94a3b8;
+        }
+
+        .copilot-btn-send {
+            background-color: #00FFA3;
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 0.8rem 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(0, 255, 163, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .copilot-btn-send:hover {
+            box-shadow: 0 0 25px rgba(0, 255, 163, 0.5);
+            background-color: #00e08f;
+        }
+
+        .copilot-btn-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .copilot-loading {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .copilot-loading .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #00F0FF;
+            border-radius: 50%;
+            animation: copilot-pulse 1s infinite alternate;
+        }
+
+        .copilot-loading .pulse-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .copilot-loading .pulse-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes copilot-pulse {
+            0% {
+                opacity: 0.3;
+                transform: translateY(0);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(-4px);
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -21,6 +253,7 @@
                         <path d="M12 2v20M2 12h20M12 5l-7 7 7 7M12 5l7 7-7 7" />
                     </svg>
                     <h1>URONEXA</h1>
+                    <span class="live-badge"><span class="live-badge-dot"></span>LIVE</span>
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 1rem;">
                     <div class="doctor-nav-icon glow-blue-pulse" id="btn-doctor-terminal"
@@ -39,7 +272,8 @@
                     <button class="btn btn-connect" id="btn-connect">Connect Wallet</button>
                 </div>
             </div>
-            <p class="subtitle">Clinical Diagnostic AI • Decentralized Health Ledger</p>
+            <p class="subtitle" id="app-subtitle"><span id="typewriter-text"></span><span
+                    class="typewriter-cursor"></span></p>
         </header>
 
         <main>
@@ -444,8 +678,230 @@
         </div>
     </div>
 
+    <!-- CLINICAL COPILOT UI (FAB & Floating Modal) -->
+    <button id="copilot-fab" class="copilot-fab">
+        <svg id="copilot-icon-chat" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        </svg>
+        <svg id="copilot-icon-close" class="hidden" style="display: none;" width="28" height="28" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+    </button>
+
+    <div id="copilot-modal" class="copilot-container copilot-hidden">
+        <div class="copilot-header">
+            <div style="position: relative; width: 12px; height: 12px; display: flex;">
+                <span class="pulse-dot"
+                    style="position: absolute; width:100%; height:100%; background: #00F0FF; border-radius: 50%; animation: pulse-dot 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; opacity: 0.75;"></span>
+                <span
+                    style="position: relative; width: 100%; height: 100%; background: #00F0FF; border-radius: 50%;"></span>
+            </div>
+            <h3 class="glow-cyan">Clinical Copilot AI</h3>
+            <span
+                style="margin-left:auto; font-size: 0.7rem; color: #00F0FF; background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.2); padding: 0.2rem 0.5rem; border-radius: 12px;">Secure
+                Connection</span>
+        </div>
+
+        <div class="copilot-chat-history" id="copilot-chat-history">
+            <div class="copilot-ai-msg">
+                Hello. I am the Uronexa Clinical Copilot. How can I help you understand your urinalysis results today?
+            </div>
+        </div>
+
+        <div class="copilot-input-area">
+            <input type="text" id="copilot-input" class="copilot-input"
+                placeholder="Ask about your biomarkers or risk score..." />
+            <button id="btn-copilot-send" class="copilot-btn-send">Send</button>
+        </div>
+    </div>
+
 
     <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/generative-ai": "https://esm.run/@google/generative-ai",
+          "marked": "https://esm.run/marked"
+        }
+      }
+    </script>
+    <script type="module">
+        import { GoogleGenerativeAI } from '@google/generative-ai';
+        import { marked } from 'marked';
+
+        const API_KEY = "AIzaSyBBjEi_gOB81i_ZKhc5XpVp52hD4atrazM";
+        const genAI = new GoogleGenerativeAI(API_KEY);
+
+        const systemPrompt = `You are the Uronexa Clinical Copilot, an advanced AI specializing in personalized urinalysis and nephrology.
+Your job is to be an interactive, empathetic, and highly dynamic health assistant. Do NOT sound like a rigid robot repeating a template.
+
+CRITICAL INSTRUCTIONS:
+1. Be Conversational: Answer the user's specific question naturally and conversationally. Do not dump a giant block of analysis unless they specifically ask for "a full breakdown" or "what is my risk score in detail".
+2. Context Aware: You have access to their exact Risk Score and Biomarkers. Use them fluidly to answer their specific question. For example, if they ask "why is my score high?", look at the worst biomarkers and explain *only* those in a friendly way.
+3. Be Direct & Helpful: If they just say "hi", greet them warmly, acknowledge their scan is complete, and ask what specific biomarker they are worried about.
+4. Vary Your Responses: Every response should sound unique. Use different formatting (paragraphs, short bullet points) depending on the context of the question.
+5. Actionable Advice: When giving dietary or health advice, make it highly specific to the biomarker they asked about, but keep it concise and encouraging. Always remind them to see a doctor if their score is high.`;
+
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-flash-latest',
+            systemInstruction: systemPrompt
+        });
+
+        let chatSession = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnSend = document.getElementById('btn-copilot-send');
+            const inputField = document.getElementById('copilot-input');
+            const chatHistory = document.getElementById('copilot-chat-history');
+            const fabBtn = document.getElementById('copilot-fab');
+            const copilotModal = document.getElementById('copilot-modal');
+            const iconChat = document.getElementById('copilot-icon-chat');
+            const iconClose = document.getElementById('copilot-icon-close');
+
+            if (fabBtn) {
+                fabBtn.addEventListener('click', () => {
+                    const isHidden = copilotModal.classList.contains('copilot-hidden');
+                    if (isHidden) {
+                        copilotModal.classList.remove('copilot-hidden');
+                        fabBtn.classList.add('fab-open');
+                        iconChat.style.display = 'none';
+                        iconClose.style.display = 'block';
+                        inputField.focus();
+                    } else {
+                        copilotModal.classList.add('copilot-hidden');
+                        fabBtn.classList.remove('fab-open');
+                        iconChat.style.display = 'block';
+                        iconClose.style.display = 'none';
+                    }
+                });
+            }
+
+            if (!btnSend || !inputField || !chatHistory) return;
+
+            const appendMessage = (text, isUser) => {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = isUser ? 'copilot-user-msg' : 'copilot-ai-msg';
+                if (isUser) {
+                    msgDiv.textContent = text;
+                } else {
+                    msgDiv.innerHTML = marked.parse(text);
+                }
+                chatHistory.appendChild(msgDiv);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            };
+
+            const handleSend = async () => {
+                const text = inputField.value.trim();
+                if (!text) return;
+
+                inputField.value = '';
+                appendMessage(text, true);
+
+                inputField.disabled = true;
+                btnSend.disabled = true;
+
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'copilot-ai-msg copilot-loading';
+                loadingDiv.innerHTML = '<span class="pulse-dot"></span><span class="pulse-dot"></span><span class="pulse-dot"></span>';
+                chatHistory.appendChild(loadingDiv);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+
+                try {
+                    if (!chatSession) {
+                        chatSession = model.startChat({ history: [] });
+                    }
+
+                    const score = window.uronexaData ? window.uronexaData.score : 'Pending Scan';
+                    const biomarkers = window.uronexaData ? window.uronexaData.biomarkers : {};
+
+                    const contextAwarePrompt = `Patient's Current Data: Risk Score ${score}, Biomarkers: ${JSON.stringify(biomarkers)}. Patient asks: ${text}`;
+
+                    const result = await chatSession.sendMessage(contextAwarePrompt);
+                    const response = await result.response;
+
+                    chatHistory.removeChild(loadingDiv);
+                    appendMessage(response.text(), false);
+
+                } catch (err) {
+                    console.error('Copilot Error:', err);
+                    chatHistory.removeChild(loadingDiv);
+                    appendMessage("Error communicating with Clinical AI: " + (err.message || err.toString()), false);
+                }
+
+                inputField.disabled = false;
+                btnSend.disabled = false;
+                inputField.focus();
+            };
+
+            btnSend.addEventListener('click', handleSend);
+            inputField.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleSend();
+            });
+        });
+    </script>
+
+    <!-- ===== FOOTER BAR ===== -->
+    <footer class="uronexa-footer">
+        <span>⚕ Powered by Uronexa AI</span>
+        <span><span class="footer-dot"></span><span class="footer-dot"></span><span class="footer-dot"></span></span>
+        <span>🔗 Blockchain Secured</span>
+        <span><span class="footer-dot"></span><span class="footer-dot"></span><span class="footer-dot"></span></span>
+        <span>v 2.0 Clinical</span>
+    </footer>
+
+    <!-- ===== TYPEWRITER + VERDICT COLORING ===== -->
+    <script>
+        // Typewriter subtitle animation
+        (function () {
+            const words = [
+                'Clinical Diagnostic AI  \u2022  Decentralized Health Ledger',
+                'Next-Gen Urinalysis  \u2022  Powered by Computer Vision',
+                'Secure  \u2022  Private  \u2022  Clinically Accurate'
+            ];
+            let wi = 0, ci = 0, deleting = false;
+            const el = document.getElementById('typewriter-text');
+            if (!el) return;
+            function tick() {
+                const word = words[wi];
+                if (!deleting) {
+                    el.textContent = word.slice(0, ci + 1);
+                    ci++;
+                    if (ci === word.length) { deleting = true; setTimeout(tick, 2200); return; }
+                } else {
+                    el.textContent = word.slice(0, ci - 1);
+                    ci--;
+                    if (ci === 0) { deleting = false; wi = (wi + 1) % words.length; }
+                }
+                setTimeout(tick, deleting ? 35 : 65);
+            }
+            setTimeout(tick, 600);
+        })();
+
+        // Add verdict CSS classes to result items when results render
+        function applyVerdictClasses() {
+            document.querySelectorAll('.result-item').forEach(item => {
+                item.classList.remove('verdict-ok', 'verdict-warn', 'verdict-danger');
+                const badge = item.querySelector('.result-badge');
+                if (!badge) return;
+                const txt = badge.textContent.trim().toLowerCase();
+                if (txt === 'normal' || txt === 'negative' || txt === 'none') {
+                    item.classList.add('verdict-ok');
+                } else if (txt === 'trace' || txt === 'small' || txt === '+1' || txt === 'positive') {
+                    item.classList.add('verdict-warn');
+                } else {
+                    item.classList.add('verdict-danger');
+                }
+            });
+        }
+
+        // Observe results section for DOM changes and apply verdict colors automatically
+        const observer = new MutationObserver(applyVerdictClasses);
+        const resultsTarget = document.getElementById('results-container');
+        if (resultsTarget) observer.observe(resultsTarget, { childList: true, subtree: true });
+    </script>
 </body>
 
 </html>

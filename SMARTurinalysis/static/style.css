@@ -517,6 +517,7 @@ body {
   padding: 3rem;
   margin-bottom: 2rem;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: visible !important;
 }
 
 @media (min-width: 992px) {
@@ -530,6 +531,8 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: visible;
+  padding: 1rem;
 }
 
 .hollow-dial-container {
@@ -597,6 +600,13 @@ body {
   height: 320px;
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  #floating-badges-container {
+    transform: translate(-50%, -50%) scale(0.85);
+    /* Shrink badges and orbit radius on small screens */
+  }
 }
 
 .floating-badge {
@@ -867,8 +877,8 @@ body {
 /* --- Accessibility Voice Orb --- */
 .voice-assistant-orb {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
+  bottom: 110px;
+  right: 24px;
   width: 60px;
   height: 60px;
   background: var(--primary);
@@ -1517,4 +1527,481 @@ body {
   border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+/* ============================================================
+   URONEXA PREMIUM UI ENHANCEMENTS
+   ============================================================ */
+
+/* --- Animated Grid Background --- */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: gridDrift 20s linear infinite;
+}
+
+@keyframes gridDrift {
+  0% {
+    background-position: 0 0, 0 0;
+  }
+
+  100% {
+    background-position: 50px 50px, 50px 50px;
+  }
+}
+
+body>* {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Animated Gradient Logo Text --- */
+.logo h1 {
+  background: linear-gradient(90deg, #60a5fa, #00F0FF, #a78bfa, #60a5fa);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientSlide 5s linear infinite;
+}
+
+@keyframes gradientSlide {
+  0% {
+    background-position: 0% center;
+  }
+
+  100% {
+    background-position: 300% center;
+  }
+}
+
+/* --- Live Badge Pulse --- */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #00ffa3;
+  background: rgba(0, 255, 163, 0.1);
+  border: 1px solid rgba(0, 255, 163, 0.3);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.live-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00ffa3;
+  animation: livePulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes livePulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.7);
+  }
+}
+
+/* --- Typewriter Cursor --- */
+.typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #60a5fa;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 0.75s step-end infinite;
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+/* --- Glass Panel Rainbow Shimmer on Hover --- */
+.glass-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.04),
+      rgba(100, 200, 255, 0.06),
+      rgba(255, 255, 255, 0.02),
+      transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+
+.glass-panel:hover::after {
+  left: 150%;
+}
+
+/* --- Button Shimmer Sweep on Hover --- */
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.4s ease;
+  pointer-events: none;
+}
+
+.btn:hover::after {
+  left: 160%;
+}
+
+/* --- Result Item Slide-Up Entry Animation --- */
+.result-item {
+  animation: slideUpFade 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.results-grid .result-item:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.results-grid .result-item:nth-child(2) {
+  animation-delay: 0.10s;
+}
+
+.results-grid .result-item:nth-child(3) {
+  animation-delay: 0.15s;
+}
+
+.results-grid .result-item:nth-child(4) {
+  animation-delay: 0.20s;
+}
+
+.results-grid .result-item:nth-child(5) {
+  animation-delay: 0.25s;
+}
+
+.results-grid .result-item:nth-child(6) {
+  animation-delay: 0.30s;
+}
+
+.results-grid .result-item:nth-child(7) {
+  animation-delay: 0.35s;
+}
+
+.results-grid .result-item:nth-child(8) {
+  animation-delay: 0.40s;
+}
+
+.results-grid .result-item:nth-child(9) {
+  animation-delay: 0.45s;
+}
+
+.results-grid .result-item:nth-child(10) {
+  animation-delay: 0.50s;
+}
+
+/* Color-coded left border glow on result items based on verdict */
+.result-item.verdict-ok {
+  border-left: 3px solid #10b981;
+  box-shadow: -3px 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.result-item.verdict-warn {
+  border-left: 3px solid #f59e0b;
+  box-shadow: -3px 0 12px rgba(245, 158, 11, 0.3);
+}
+
+.result-item.verdict-danger {
+  border-left: 3px solid #ef4444;
+  box-shadow: -3px 0 12px rgba(239, 68, 68, 0.3);
+}
+
+/* --- Risk Dial Pulse Glow --- */
+.hollow-dial-container {
+  animation: dialGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes dialGlow {
+  from {
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.3));
+  }
+
+  to {
+    filter: drop-shadow(0 0 22px rgba(59, 130, 246, 0.7));
+  }
+}
+
+/* --- Floating Badges Entry Animation --- */
+.floating-badge {
+  animation: badgePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@keyframes badgePop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* --- Copilot FAB Sonar Ping --- */
+.copilot-fab::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(0, 240, 255, 0.4);
+  animation: sonarPing 3s ease-out infinite;
+  z-index: -1;
+}
+
+@keyframes sonarPing {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+
+  70% {
+    transform: scale(2);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* --- Glowing Section Divider --- */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), rgba(0, 240, 255, 0.4), transparent);
+  margin: 0.5rem 0;
+  border: none;
+  animation: dividerPulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes dividerPulse {
+  from {
+    opacity: 0.4;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* --- Footer Bar --- */
+.uronexa-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 90;
+  background: rgba(5, 11, 20, 0.85);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(59, 130, 246, 0.15);
+  padding: 0.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  font-size: 0.65rem;
+  color: rgba(148, 163, 184, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  pointer-events: none;
+}
+
+.uronexa-footer span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.footer-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #00ffa3;
+  animation: footerDotBlink 2s ease-in-out infinite;
+}
+
+.footer-dot:nth-child(2) {
+  animation-delay: 0.4s;
+}
+
+.footer-dot:nth-child(3) {
+  animation-delay: 0.8s;
+}
+
+@keyframes footerDotBlink {
+
+  0%,
+  80%,
+  100% {
+    opacity: 1;
+  }
+
+  40% {
+    opacity: 0.2;
+  }
+}
+
+/* --- Diagnostic panel entry --- */
+.diagnostic-panel {
+  animation: fadeInScale 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* --- Upload drag-over glow pulse --- */
+.glass-dropzone.dragover {
+  animation: dropzonePulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes dropzonePulse {
+  from {
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(59, 130, 246, 0.4), 0 0 20px rgba(59, 130, 246, 0.2);
+  }
+
+  to {
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(59, 130, 246, 0.9), 0 0 40px rgba(59, 130, 246, 0.4);
+  }
+}
+
+/* --- Wallet connect button glow pulse --- */
+#btn-connect {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+#btn-connect.connected {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3));
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #10b981;
+  animation: connectedPulse 3s ease-in-out infinite;
+}
+
+@keyframes connectedPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+}
+
+/* --- Advisory card subtle entrance --- */
+.clinical-advisory-card {
+  animation: advisoryReveal 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes advisoryReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Glow cyan utility class --- */
+.glow-cyan {
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.6), 0 0 20px rgba(0, 240, 255, 0.3);
+}
+
+/* --- Processing text flicker --- */
+.processing-text {
+  animation: processingFlicker 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes processingFlicker {
+  0% {
+    opacity: 0.5;
+    text-shadow: none;
+  }
+
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 20px var(--primary), 0 0 40px rgba(59, 130, 246, 0.3);
+  }
 }
