@@ -2,7 +2,7 @@ import urllib.request
 import json
 import ssl
 
-url = "https://generativelanguage.googleapis.com/v1beta/models?key=AIzaSyBBjEi_gOB81i_ZKhc5XpVp52hD4atrazM"
+url = "https://generativelanguage.googleapis.com/v1beta/models?key=AIzaSyBlWCo8Xn_nmAaDMdlwNs68CFiM39oPTwk"
 
 ctx = ssl.create_default_context()
 ctx.check_hostname = False
